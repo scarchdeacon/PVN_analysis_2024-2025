@@ -1,0 +1,162 @@
+---
+title: "PVN DE Volcano Plots"
+author: "Sinead Archdeacon"
+date: "2026-04-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+This section creates standardized volcano plots for side-by-side comparison of the DE results from male and female Avp and Oxt neurons.
+
+```{r Environment setup}
+
+# Load libraries
+library(Seurat)
+library(SeuratObject)
+library(ggplot2)
+```
+
+## Read in DE results
+
+```{r read in results}
+
+all_genes_fem_avp <- read.csv(file = "C:/shares/btrainor/Sinead/GitHub/all_genes_fem_avp.csv")
+all_genes_male_avp <- read.csv(file = "C:/shares/btrainor/Sinead/GitHub/all_genes_male_avp.csv")
+all_genes_fem_oxt <- read.csv(file = "C:/shares/btrainor/Sinead/GitHub/all_genes_fem_oxt.csv")
+all_genes_male_oxt <- read.csv(file = "C:/shares/btrainor/Sinead/GitHub/all_genes_male_oxt.csv")
+
+```
+
+## Set axes limits
+Ensure all volcano plots have the same axes scales.
+
+```{r set axes limits}
+
+gene_list <- list(fem_avp = all_genes_fem_avp, fem_oxt = all_genes_fem_oxt, male_avp = all_genes_male_avp, fem_avp = all_genes_male_oxt)
+
+x_vals_all <- c()
+y_vals_all <- c()
+
+for (df in gene_list) {
+  # remove rows with NA pvalue to avoid log10 issues
+  df <- df[!is.na(df$pvalue), ]
+  
+  # store values for axis range
+  x_vals_all <- c(x_vals_all, df$log2FoldChange)
+  y_vals_all <- c(y_vals_all, -log10(df$pvalue))
+}
+
+# compute global ranges
+xlim_global <- range(x_vals_all, na.rm = TRUE)
+ylim_global <- range(y_vals_all, na.rm = TRUE)
+
+# optional: round to nice numbers
+xlimits <- c(floor(xlim_global[1]), ceiling(xlim_global[2]))
+ylimits <- c(0, ceiling(ylim_global[2]))
+```
+
+## Female Avp volcano plot
+
+```{r female Avp volcano plot}
+
+ggplot(all_genes_fem_avp, aes(x = log2FoldChange, y = -log10(pvalue))) +
+  geom_point(aes(color = pvalue < 0.05), 
+             alpha = 0.7, size = 2) + 
+  scale_color_manual(values = c("gray", "firebrick3")) +  # non-significant in gray, significant in red
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black", size = 1) +
+  geom_text_repel(data = subset(all_genes_fem_avp, pvalue < 0.05), 
+                  aes(label = ifelse(pvalue < 0.05, rownames(all_genes_fem_avp), '')),
+                  box.padding = 0.5, 
+                  max.overlaps = 10,
+                  size = 3) +
+  scale_x_continuous(limits = x_limits) +
+  scale_y_continuous(limits = y_limits) +
+  xlab("Log2 Fold Change") + 
+  ylab("-Log10 P-Value") + 
+  ggtitle("Differential Expression in AVP Neurons") +
+  theme_minimal(base_size = 15) + 
+  theme(legend.position = "none") +  # remove the legend
+  theme(plot.title = element_text(hjust = 0.5))  # center the title
+```
+
+## Male Avp volcano plot
+
+```{r male Avp volcano plot}
+
+ggplot(all_genes_male_avp, aes(x = log2FoldChange, y = -log10(pvalue))) +
+  geom_point(aes(color = pvalue < 0.05), 
+             alpha = 0.7, size = 2) + 
+  scale_color_manual(values = c("gray", "firebrick3")) +  # non-significant in gray, significant in red
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black", size = 1) +
+  geom_text_repel(data = subset(all_genes_male_avp, pvalue < 0.05), 
+                  aes(label = ifelse(pvalue < 0.05, rownames(all_genes_male_avp), '')),
+                  box.padding = 0.5, 
+                  max.overlaps = 10,
+                  size = 3) +
+  scale_x_continuous(limits = x_limits) +
+  scale_y_continuous(limits = y_limits) +
+  xlab("Log2 Fold Change") + 
+  ylab("-Log10 P-Value") + 
+  ggtitle("Differential Expression in AVP Neurons") +
+  theme_minimal(base_size = 15) + 
+  theme(legend.position = "none") +  # remove the legend
+  theme(plot.title = element_text(hjust = 0.5))  # center the title
+```
+
+## Female Oxt volcano plot
+
+```{r female Oxt volcano plot}
+
+ggplot(all_genes_fem_oxt, aes(x = log2FoldChange, y = -log10(pvalue))) +
+  geom_point(aes(color = pvalue < 0.05), 
+             alpha = 0.7, size = 2) + 
+  scale_color_manual(values = c("gray", "firebrick3")) +  # non-significant in gray, significant in red
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black", size = 1) +
+  geom_text_repel(data = subset(all_genes_fem_oxt, pvalue < 0.05), 
+                  aes(label = ifelse(pvalue < 0.05, rownames(all_genes_fem_oxt), '')),
+                  box.padding = 0.5, 
+                  max.overlaps = 10,
+                  size = 3) +
+  scale_x_continuous(limits = x_limits) +
+  scale_y_continuous(limits = y_limits) +
+  xlab("Log2 Fold Change") + 
+  ylab("-Log10 P-Value") + 
+  ggtitle("Differential Expression in OT Neurons") +
+  theme_minimal(base_size = 15) + 
+  theme(legend.position = "none") +  # remove the legend
+  theme(plot.title = element_text(hjust = 0.5))  # center the title
+```
+
+## Male Oxt volcano plot
+
+```{r male Oxt volcano plot}
+
+ggplot(all_genes_male_oxt, aes(x = log2FoldChange, y = -log10(pvalue))) +
+  geom_point(aes(color = pvalue < 0.05), 
+             alpha = 0.7, size = 2) + 
+  scale_color_manual(values = c("gray", "firebrick3")) +  # non-significant in gray, significant in red
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black", size = 1) +
+  geom_text_repel(data = subset(all_genes_male_oxt, pvalue < 0.05), 
+                  aes(label = ifelse(pvalue < 0.05, rownames(all_genes_male_oxt), '')),
+                  box.padding = 0.5, 
+                  max.overlaps = 10,
+                  size = 3) +
+  scale_x_continuous(limits = x_limits) +
+  scale_y_continuous(limits = y_limits) +
+  xlab("Log2 Fold Change") + 
+  ylab("-Log10 P-Value") + 
+  ggtitle("Differential Expression in OT Neurons") +
+  theme_minimal(base_size = 15) + 
+  theme(legend.position = "none") +  # remove the legend
+  theme(plot.title = element_text(hjust = 0.5))  # center the title
+```
+
+
+
+
+
+
+
