@@ -1,0 +1,428 @@
+---
+title: "PVN analysis 2024-2025: preprocessing"
+author: "Sinead Archdeacon"
+date: "2026-04-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This pipeline follows a standard Seurat workflow for loading and preprocessing snRNA-seq data. The data is then subsetted for cells of interest for downstream analysis.
+
+```{r Environment setup}
+
+# Increase capacity of R: necessary at the start of every session
+options(future.globals.maxSize = 60000 * 1024^2)
+
+# Load libraries
+library(Seurat)
+library(SeuratObject)
+library(future.apply)
+library(harmony)
+library(glmGamPoi)
+library(sctransform)
+library(biomaRt)
+library(viridis)
+library(tidyverse)
+library(kableExtra)
+library(edgeR)
+library(HGNChelper)
+library(ggplot2)
+```
+
+## Seurat object creation
+
+First, add the .h5 files to the RStudio environment.
+
+```{r Upload files}
+
+PVNData_malec1 <- Seurat::Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/PVN_MALE_C1/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
+PVNData_males1 <- Seurat::Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/PVN_MALE_S1/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
+PVNData_fems1 <- Seurat::Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/AG_BT_PVN_S1/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
+PVNData_femc1 <- Seurat::Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/AG_BT_PVN_C1/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
+PVNData_fems2 <- Seurat::Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/PVN_FEM_S2/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
+PVNData_femc2 <- Seurat::Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/PVN_FEM_C2/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
+```
+
+Convert to Seurat objects and add relevant metadata columns. The Souporcell information is used to demultiplex the pooled samples.
+
+```{r Create Seurat objects}
+
+PVNSeuratObject_malec1 <- Seurat::CreateSeuratObject(counts = PVNData_malec1)
+PVNSeuratObject_males1 <- Seurat::CreateSeuratObject(counts = PVNData_males1)
+PVNSeuratObject_femc1 <- Seurat::CreateSeuratObject(counts = PVNData_femc1)
+PVNSeuratObject_fems1 <- Seurat::CreateSeuratObject(counts = PVNData_fems1)
+PVNSeuratObject_femc2 <- Seurat::CreateSeuratObject(counts = PVNData_femc2)
+PVNSeuratObject_fems2 <- Seurat::CreateSeuratObject(counts = PVNData_fems2)
+
+# add sex metadata
+PVNSeuratObject_malec1$sex <- 'male'
+PVNSeuratObject_males1$sex <- 'male'
+PVNSeuratObject_femc1$sex <- 'female'
+PVNSeuratObject_femc2$sex <- 'female'
+PVNSeuratObject_fems1$sex <- 'female'
+PVNSeuratObject_fems2$sex <- 'female'
+
+# add condition metadata
+PVNSeuratObject_malec1$condition <- 'control'
+PVNSeuratObject_males1$condition <- 'stress'
+PVNSeuratObject_femc1$condition <- 'control'
+PVNSeuratObject_femc2$condition <- 'control'
+PVNSeuratObject_fems1$condition <- 'stress'
+PVNSeuratObject_fems2$condition <- 'stress'
+
+# add Souporcell metadata (mouse IDs and doublet status)
+  add_souporcell_metadata <- function(seurat_object, souporcell_dir) {
+    clusters_path <- file.path(souporcell_dir, "clusters.tsv")
+  }
+
+  clusters <- read.table(clusters_path, header = TRUE, stringsAsFactors = FALSE)
+
+  # Convert barcode column to character and trim spaces
+  clusters$barcode <- as.character(trimws(clusters$barcode)) 
+
+  # Find matching barcodes
+  matching_barcodes <- clusters$barcode %in% colnames(seurat_object) 
+  matched_count <- sum(matching_barcodes)
+  print(paste("Matching barcodes found:", matched_count))
+   if (matched_count == 0) {
+      stop("Error: No overlapping cells found! Double-check barcode formatting.")
+   }
+
+# Subset only matching barcodes
+clusters <- clusters[matching_barcodes, c("barcode", "assignment", "status")] 
+
+# Ensure row names match Seurat object
+rownames(clusters) <- clusters$barcode
+clusters$barcode <- NULL  # Remove barcode column after setting rownames
+  
+# Add metadata to Seurat object
+seurat_object <- Seurat::AddMetaData(seurat_object, metadata = clusters)
+  
+return(seurat_object)
+
+# Remove doublets using doublet status metadata column
+PVNSeuratObject_malec1 <- subset(PVNSeuratObject_malec1, subset = status == "singlet" & 
+                                   assignment %in% c("0", "1", "2", "3"))
+PVNSeuratObject_males1 <- subset(PVNSeuratObject_males1, subset = status == "singlet" &
+                                   assignment %in% c("0", "1", "2", "3"))
+PVNSeuratObject_femc1 <- subset(PVNSeuratObject_femc1, subset = status == "singlet" & 
+                                  assignment %in% c("0", "1", "2", "3"))
+PVNSeuratObject_femc2 <- subset(PVNSeuratObject_femc2, subset = status == "singlet" & 
+                                  assignment %in% c("0", "1", "2", "3"))
+PVNSeuratObject_fems1 <- subset(PVNSeuratObject_fems1, subset = status == "singlet" & 
+                                  assignment %in% c("0", "1", "2", "3"))
+PVNSeuratObject_fems2 <- subset(PVNSeuratObject_fems2, subset = status == "singlet" & 
+                                  assignment %in% c("0", "1", "2", "3"))
+# Check how many doublets were removed
+
+# Add cell IDS and orig idents metadata
+PVNSeuratObject_malec1 <- Seurat::RenameCells(PVNSeuratObject_malec1, add.cell.id = "malec1_")
+PVNSeuratObject_males1 <- Seurat::RenameCells(PVNSeuratObject_males1, add.cell.id = "males1_")
+PVNSeuratObject_femc1 <- Seurat::RenameCells(PVNSeuratObject_femc1, add.cell.id = "femc1_")
+PVNSeuratObject_femc2 <- Seurat::RenameCells(PVNSeuratObject_femc2, add.cell.id = "femc2_")
+PVNSeuratObject_fems1 <- Seurat::RenameCells(PVNSeuratObject_fems1, add.cell.id = "fems1_")
+PVNSeuratObject_fems2 <- Seurat::RenameCells(PVNSeuratObject_fems2, add.cell.id = "fems2_")
+
+PVNSeuratObject_malec1$orig.ident <- "malec1"
+PVNSeuratObject_males1$orig.ident <- "males1"
+PVNSeuratObject_femc1$orig.ident <- "femc1"
+PVNSeuratObject_femc2$orig.ident <- "femc2"
+PVNSeuratObject_fems1$orig.ident <- "fems1"
+PVNSeuratObject_fems2$orig.ident <- "fems2"
+
+# Add 'dataset' metadata (will help with pseudobulking later on)
+PVNSeuratObject_malec1$dataset <- "male_c1"
+PVNSeuratObject_males1$dataset <- "male_s1"
+PVNSeuratObject_femc1$dataset <- "female_c1"
+PVNSeuratObject_femc2$dataset <- "female_c2"
+PVNSeuratObject_fems1$dataset <- "female_s1"
+PVNSeuratObject_fems2$dataset <- "female_s2"
+
+```
+
+## Quality control/filtering
+Refer to 1-preprocessing.Rmd in BNST_analysis_2025 repo for details on method used.
+
+```{r QC/filtering}
+
+VlnPlot(PVNSeuratObject_malec1, features = c("nFeature_RNA", "nCount_RNA"), ncol = 3)
+FeatureScatter(PVNSeuratObject_malec1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + geom_smooth(method = 'lm')
+PVNSeuratObject_malec1 <- subset(PVNSeuratObject_malec1, subset = nFeature_RNA > 1000 & nFeature_RNA < 10000 & nCount_RNA < 40000)
+```
+
+```{r QC males1}
+
+VlnPlot(PVNSeuratObject_males1, features = c("nFeature_RNA", "nCount_RNA" ), ncol = 3)
+FeatureScatter(PVNSeuratObject_males1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + geom_smooth(method = 'lm')
+PVNSeuratObject_males1 <- subset(PVNSeuratObject_males1, subset = nFeature_RNA > 1000 & nFeature_RNA < 10000 & nCount_RNA < 40000)
+```
+
+```{r QC femc1}
+
+VlnPlot(PVNSeuratObject_femc1, features = c("nFeature_RNA", "nCount_RNA" ), ncol = 3)
+FeatureScatter(PVNSeuratObject_femc1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + geom_smooth(method = 'lm')
+PVNSeuratObject_femc1 <- subset(PVNSeuratObject_femc1, subset = nFeature_RNA > 1000 & nFeature_RNA < 10000 & nCount_RNA < 30000)
+```
+
+```{r QC femc2}
+
+VlnPlot(PVNSeuratObject_femc2, features = c("nFeature_RNA", "nCount_RNA" ), ncol = 3)
+FeatureScatter(PVNSeuratObject_femc2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + geom_smooth(method = 'lm')
+PVNSeuratObject_femc2 <- subset(PVNSeuratObject_femc2, subset = nFeature_RNA > 1000 & nFeature_RNA < 10000 & nCount_RNA < 40000)
+```
+
+```{r QC fems1}
+
+VlnPlot(PVNSeuratObject_fems1, features = c("nFeature_RNA", "nCount_RNA" ), ncol = 3)
+FeatureScatter(PVNSeuratObject_fems1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + geom_smooth(method = 'lm')
+PVNSeuratObject_fems1 <- subset(PVNSeuratObject_fems1, subset = nFeature_RNA > 1000 & nFeature_RNA < 10000 & nCount_RNA < 35000)
+```
+
+```{r QC fems2}
+
+VlnPlot(PVNSeuratObject_fems2, features = c("nFeature_RNA", "nCount_RNA" ), ncol = 3)
+FeatureScatter(PVNSeuratObject_fems2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + geom_smooth(method = 'lm')
+PVNSeuratObject_fems2 <- subset(PVNSeuratObject_fems2, subset = nFeature_RNA > 1000 & nFeature_RNA < 10000 & nCount_RNA < 40000)
+```
+
+## Normalize RNA assays for each object
+
+```{r Normalize RNA assays}
+
+PVNSeuratObject_malec1 <- Seurat::NormalizeData(PVNSeuratObject_malec1, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
+PVNSeuratObject_malec1 <- Seurat::FindVariableFeatures(PVNSeuratObject_malec1, selection.method = "vst", nfeatures = 2000, assay = "RNA")
+all.genes <- rownames(PVNSeuratObject_malec1)
+PVNSeuratObject_malec1 <- Seurat::ScaleData(PVNSeuratObject_malec1, features = all.genes, assay = "RNA")
+
+PVNSeuratObject_males1 <- Seurat::NormalizeData(PVNSeuratObject_males1, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
+PVNSeuratObject_males1 <- Seurat::FindVariableFeatures(PVNSeuratObject_males1, selection.method = "vst", nfeatures = 2000, assay = "RNA")
+all.genes <- rownames(PVNSeuratObject_males1)
+PVNSeuratObject_males1 <- Seurat::ScaleData(PVNSeuratObject_males1, features = all.genes, assay = "RNA")
+
+PVNSeuratObject_femc1 <- Seurat::NormalizeData(PVNSeuratObject_femc1, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
+PVNSeuratObject_femc1 <- Seurat::FindVariableFeatures(PVNSeuratObject_femc1, selection.method = "vst", nfeatures = 2000, assay = "RNA")
+all.genes <- rownames(PVNSeuratObject_femc1)
+PVNSeuratObject_femc1 <- Seurat::ScaleData(PVNSeuratObject_femc1, features = all.genes, assay = "RNA")
+
+PVNSeuratObject_femc2 <- Seurat::NormalizeData(PVNSeuratObject_femc2, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
+PVNSeuratObject_femc2 <- Seurat::FindVariableFeatures(PVNSeuratObject_femc2, selection.method = "vst", nfeatures = 2000, assay = "RNA")
+all.genes <- rownames(PVNSeuratObject_femc2)
+PVNSeuratObject_femc2 <- Seurat::ScaleData(PVNSeuratObject_femc2, features = all.genes, assay = "RNA")
+
+PVNSeuratObject_fems1 <- Seurat::NormalizeData(PVNSeuratObject_fems1, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
+PVNSeuratObject_fems1 <- Seurat::FindVariableFeatures(PVNSeuratObject_fems1, selection.method = "vst", nfeatures = 2000, assay = "RNA")
+all.genes <- rownames(PVNSeuratObject_fems1)
+PVNSeuratObject_fems1 <- Seurat::ScaleData(PVNSeuratObject_fems1, features = all.genes, assay = "RNA")
+
+PVNSeuratObject_fems2 <- Seurat::NormalizeData(PVNSeuratObject_fems2, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
+PVNSeuratObject_fems2 <- Seurat::FindVariableFeatures(PVNSeuratObject_fems2, selection.method = "vst", nfeatures = 2000, assay = "RNA")
+all.genes <- rownames(PVNSeuratObject_fems2)
+PVNSeuratObject_fems2 <- Seurat::ScaleData(PVNSeuratObject_fems2, features = all.genes, assay = "RNA")
+```
+
+## Combine all Seurat objects and run SCTransform
+
+```{r SCTransform}
+
+# Create a list of Seurat objects
+PVN.list <- list(
+  malec1 = PVNSeuratObject_malec1,
+  males1 = PVNSeuratObject_males1,
+  femc1 = PVNSeuratObject_femc1,
+  femc2 = PVNSeuratObject_femc2,
+  fems1 = PVNSeuratObject_fems1,
+  fems2 = PVNSeuratObject_fems2
+  )
+
+# Set a larger limit (4 GB) before running SCT
+options(future.globals.maxSize = 4e9) 
+
+# Clean up environment
+rm(PVNData_femc1, PVNData_femc2, PVNData_fems1, PVNData_fems2, PVNData_malec1, PVNData_males1, PVNSeuratObject_femc1, PVNSeuratObject_femc2, PVNSeuratObject_fems1, PVNSeuratObject_fems2, PVNSeuratObject_malec1, PVNSeuratObject_males1)
+
+plan("multicore", workers = 6) 
+
+# Run SCT (this step takes a long time)
+PVN.list <- future_lapply(PVN.list, function(x) {
+  Seurat::SCTransform(x, method = "glmGamPoi", 
+                      return.only.var.genes = FALSE,  # Keep all genes to avoid missing columns
+                      variable.features.n = 2000,    
+                      residual_type = "pearson")  # Ensure residuals are calculated properly
+}, future.seed = TRUE)
+```
+
+## Integrate all individual Seurat objects
+
+```{r integrate}
+
+var.features <- SelectIntegrationFeatures(object.list = PVN.list, nfeatures = 2000)
+PVN.sct <- merge(x = PVN.list[[1]], y = PVN.list[2:length(PVN.list)], merge.data = TRUE)
+table(PVN.sct@meta.data$dataset)
+PVN.sct@meta.data$dataset <- as.factor(PVN.sct@meta.data$dataset)
+DefaultAssay(PVN.sct) <- "SCT"  # Make sure SCT is active
+VariableFeatures(PVN.sct) <- SelectIntegrationFeatures(object.list = PVN.list, nfeatures = 2000)
+length(VariableFeatures(PVN.sct))
+VariableFeatures(PVN.sct) <- unique(c(VariableFeatures(PVN.sct), "Avp", "Oxt"))
+length(VariableFeatures(PVN.sct)) #2000
+```
+
+## PCA and clustering
+
+```{r PCA and clustering}
+
+PVN.sct <- RunPCA(PVN.sct, features = VariableFeatures(PVN.sct), verbose = FALSE)
+PVN.sct <- RunHarmony(PVN.sct, assay.use = "SCT", group.by.vars = "dataset")
+ElbowPlot(PVN.sct, ndims= 50)
+PVN.sct.35 <- FindNeighbors(PVN.sct, reduction = "harmony", dims = 1:35)
+
+plan("sequential")
+PVN.sct.35_0.2 <- FindClusters(PVN.sct.35, resolution = 0.2)  
+PVN.sct.35_0.2 <- RunUMAP(PVN.sct.35_0.2, reduction = "harmony", dims = 1:35)
+DimPlot(PVN.sct.35_0.2, group.by = c("dataset", "assignment", "sex"), ncol = 3)
+DimPlot(PVN.sct.35_0.2, reduction = "umap", group.by = "seurat_clusters")
+```
+
+## Subset Avp+ cells
+
+Determine vasopressin expression threshold.
+
+```{r Avp threshold}
+
+# Fetch Avp and Oxt expression values
+avp_expression <- FetchData(PVN.sct.35_0.2, vars = "Avp", assay = "SCT")
+oxt_expression <- FetchData(PVN.sct.35_0.2, vars = "Oxt", assay = "SCT")
+
+# visualize Avp expression
+ggplot(avp_expression, aes_string(x = "Avp")) +
+  geom_histogram(binwidth = 0.5, fill = "blue", color = "black") + 
+  theme_minimal() +
+  labs(title = paste("Avp Expression"),
+       x = "Expression Level",
+       y = "Number of Cells")
+
+# Set dynamic threshold
+avp_threshold <- quantile(avp_expression$Avp, 0.90)  # 1.098612
+
+# Subset Avp+ cells
+avp_cells <- WhichCells(PVN.sct.35_0.2, expression = Avp > avp_threshold & Avp > Oxt)
+AvpSubset <- subset(PVN.sct, cells = avp_cells) # 4897 cells
+```
+
+Re-normalize and subcluster the Avp subset.
+
+```{r re-normalize Avp subset}
+
+DefaultAssay(AvpSubset) <- "SCT"
+VariableFeatures(AvpSubset) <- SelectIntegrationFeatures(object.list = list(AvpSubset), nfeatures = 2000)
+
+AvpSubset <- RunPCA(AvpSubset, features = VariableFeatures(AvpSubset), verbose = FALSE)
+AvpSubset <- RunHarmony(AvpSubset, assay.use = "SCT", group.by.vars = "dataset")
+AvpSubset.35 <- FindNeighbors(AvpSubset, reduction = "harmony", dims = 1:35)
+AvpSubset.35_0.75 <- FindClusters(AvpSubset.35, resolution = 0.75)
+AvpSubset.35_0.75 <- RunUMAP(AvpSubset, reduction = "harmony", dims = 1:35)
+DimPlot(AvpSubset.35_0.75, reduction = "umap", group.by = "seurat_clusters")
+```
+
+Further visualize Avp expression in the Avp subset.
+
+```{r visualization}
+
+DefaultAssay(AvpSubset.35_0.75) <- "RNA"
+
+FeaturePlot(
+  AvpSubset.35_0.75,
+  features = "Avp",
+  reduction = "umap",
+  pt.size = 1    # Adjust point size as needed
+  ) +
+  ggtitle("UMAP by Avp Expression")
+
+VlnPlot(
+  AvpSubset.35_0.75,
+  features = "Avp", assay = "RNA",
+  group.by = "seurat_clusters",  # Adjust if using a different cluster column
+  pt.size = 0  # Set to a small value if you want to show individual points
+  ) +
+  ggtitle("Avp Expression by Cluster") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Save Avp cells subset
+
+```{r save progress}
+
+saveRDS(AvpSubset.35_0.75, file = "C:/shares/btrainor/Sinead/GitHub/AvpSubset.35_0.75.rds")
+```
+
+## Subset Oxt+ cells
+Determine oxytocin expression threshold. (Explain why this is different than Avp threshold.)
+
+```{r oxytocin threshold}
+
+# visualize Oxt expression
+ggplot(oxt_expression, aes_string(x = "Oxt")) +
+  geom_histogram(binwidth = 0.5, fill = "blue", color = "black") + 
+  theme_minimal() +
+  labs(title = paste("Oxt Expression"),
+       x = "Expression Level",
+       y = "Number of Cells")
+
+# Subset Oxt+ cells
+oxt_cells <- Seurat::WhichCells(PVN.sct.35_0.2, expression = Oxt > 0.5 & Oxt > Avp)
+OxtSubset <- subset(PVN.sct, cells = oxt_cells) # 9371 cells
+```
+
+Re-normalize and subcluster the Oxt subset.
+
+```{r re-normalize Oxt subset}
+
+DefaultAssay(OxtSubset) <- "SCT"
+VariableFeatures(OxtSubset) <- SelectIntegrationFeatures(object.list = list(OxtSubset), nfeatures = 2000)
+
+OxtSubset <- RunPCA(OxtSubset, features = VariableFeatures(OxtSubset), verbose = FALSE)
+OxtSubset <- RunHarmony(OxtSubset, assay.use = "SCT", group.by.vars = "dataset")
+ElbowPlot(OxtSubset, ndims= 50)
+OxtSubset.45 <- FindNeighbors(OxtSubset, reduction = "harmony", dims = 1:45)
+OxtSubset.45_0.4 <- FindClusters(OxtSubset.45, resolution = 0.4)
+OxtSubset.45_0.4 <- RunUMAP(OxtSubset.45_0.4, reduction = "harmony", dims = 1:45)
+DimPlot(OxtSubset.45_0.4, reduction = "umap", group.by = "seurat_clusters")
+```
+
+Further visualize Oxt expression in the Oxt subset.
+
+```{r visualization}
+
+DefaultAssay(OxtSubset.45_0.4) <- "RNA"
+FeaturePlot(
+  OxtSubset.45_0.4,
+  features = "Oxt",
+  reduction = "umap",
+  pt.size = 1    
+  ) +
+  ggtitle("UMAP by Oxt Expression")
+
+VlnPlot(
+  OxtSubset.45_0.4,
+  features = "Oxt", assay = "RNA",
+  group.by = "seurat_clusters",  
+  pt.size = 0  
+  ) +
+  ggtitle("Oxt Expression by Cluster") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r save progress}
+
+saveRDS(OxtSubset.45_0.4, file = "C:/shares/btrainor/Sinead/GitHub/OxtSubset.45_0.4.rds")
+```
+
+
+
+
+
+
+
