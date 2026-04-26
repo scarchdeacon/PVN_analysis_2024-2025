@@ -1,0 +1,355 @@
+---
+title: "PVN analysis 2024-2025: cell type assignment"
+author: "Sinead Archdeacon"
+date: "2026-04-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+This section of the workflow annotates the Avp+ and Oxt+ cells with broad cell type classes, so neurons can be identified.
+
+```{r Environment setup}
+
+# Increase capacity of R: necessary at the start of every session
+options(future.globals.maxSize = 60000 * 1024^2)
+
+# Load libraries
+library(Seurat)
+library(SeuratObject)
+library(future.apply)
+library(harmony)
+library(glmGamPoi)
+library(sctransform)
+library(biomaRt)
+library(viridis)
+library(tidyverse)
+library(kableExtra)
+library(edgeR)
+library(HGNChelper)
+library(ggplot2)
+```
+
+## Read in the data
+
+```{r read in data}
+
+AvpSubset.35_0.75 <- readRDS(file = "C:/shares/btrainor/Sinead/GitHub/AvpSubset.35_0.75.rds")
+OxtSubset.45_0.4 <- readRDS(file = "C:/shares/btrainor/Sinead/GitHub/AvpSubset.45_0.4.rds")
+```
+
+## Define cell type markers
+
+```{r cell type markers}
+
+neuron_genes <- c("Snap25", "Gria1", "Rbfox3")
+astrocyte_genes <- c("Gfap", "Aldh1l1", "S100b", "Sox9", "Aqp4", "Slc1a3", "Ndrg2")
+oligodendrocyte_genes <- c("Mbp", "Mog", "Plp1", "Mal", "Mobp")
+microglial_genes <- c("P2ry12", "Aif1", "Tmem119", "Cx3cr1")
+endothelial_genes <- c("Pecam1","Flt1", "Pltp", "Epas1", "Flt1", "Lrp8", "Nos3")
+pericyte_genes <- c("Pdgfrb", "Acta2", "Des", "Anpep", "Cspg4")
+ependymal_genes <- c("Foxj1", "Ttr", "Vim")
+
+all_genes <- list(
+  neuron = neuron_genes,
+  astrocyte = astrocyte_genes,
+  oligodendrocyte = oligodendrocyte_genes,
+  microglia = microglial_genes,
+  endothelial = endothelial_genes,
+  pericyte = pericyte_genes,
+  ependymal = ependymal_genes
+)
+```
+
+## Assign module scores
+Assign module scores for each cell type in both subsets.
+
+```{r module scores}
+
+DefaultAssay(AvpSubset.35_0.75) <- "SCT"
+AvpSubset.35_0.75 <- AddModuleScore(AvpSubset.35_0.75, features = list(neuron_genes), 
+                                            name = "Neuron_Score")
+AvpSubset.35_0.75 <- AddModuleScore(AvpSubset.35_0.75, features = list(astrocyte_genes), 
+                                            name = "Astrocyte_Score")
+AvpSubset.35_0.75 <- AddModuleScore(AvpSubset.35_0.75, features = list(oligodendrocyte_genes), 
+                                            name = "Oligodendrocyte_Score")
+AvpSubset.35_0.75 <- AddModuleScore(AvpSubset.35_0.75, features = list(microglial_genes), 
+                                            name = "Microglial_Score")
+AvpSubset.35_0.75 <- AddModuleScore(AvpSubset.35_0.75, features = list(endothelial_genes), 
+                                            name = "Endothelial_Score")
+AvpSubset.35_0.75 <- AddModuleScore(AvpSubset.35_0.75, features = list(pericyte_genes), 
+                                            name = "Pericyte_Score")
+AvpSubset.35_0.75 <- AddModuleScore(AvpSubset.35_0.75, features = list(ependymal_genes), 
+                                            name = "Ependymal_Score")
+
+DefaultAssay(OxtSubset.45_0.4) <- "SCT"
+OxtSubset.45_0.4 <- AddModuleScore(OxtSubset.45_0.4, features = list(neuron_genes), 
+                                           name = "Neuron_Score")
+OxtSubset.45_0.4 <- AddModuleScore(OxtSubset.45_0.4, features = list(astrocyte_genes), 
+                                   name = "Astrocyte_Score")
+OxtSubset.45_0.4 <- AddModuleScore(OxtSubset.45_0.4, features = list(oligodendrocyte_genes), 
+                                           name = "Oligodendrocyte_Score")
+OxtSubset.45_0.4 <- AddModuleScore(OxtSubset.45_0.4, features = list(microglial_genes), 
+                                   name = "Microglial_Score")
+OxtSubset.45_0.4 <- AddModuleScore(OxtSubset.45_0.4, features = list(endothelial_genes), 
+                                   name = "Endothelial_Score")
+OxtSubset.45_0.4 <- AddModuleScore(OxtSubset.45_0.4, features = list(pericyte_genes), 
+                                   name = "Pericyte_Score")
+OxtSubset.45_0.4 <- AddModuleScore(OxtSubset.45_0.4, features = list(ependymal_genes),
+                                   name = "Ependymal_Score")
+
+```
+
+## Cell type 0
+Assign "cell type 0" for each subset based on module scores.
+
+```{r assign cell type 0}
+
+AvpSubset.35_0.75@meta.data
+meta_data <-  AvpSubset.35_0.75@meta.data
+scores_df <- data.frame(
+  Neuron_Score = meta_data$Neuron_Score1,
+  Astrocyte_Score = meta_data$Astrocyte_Score1,
+  Microglial_Score = meta_data$Microglial_Score1,
+  Endothelial_Score = meta_data$Endothelial_Score1,
+  Oligodendrocyte_Score = meta_data$Oligodendrocyte_Score1,
+  Pericyte_Score = meta_data$Pericyte_Score1,
+  Ependymal_Score = meta_data$Ependymal_Score1
+)
+
+classify_cell_type <- function(row) {
+  max_score <- max(row, na.rm = TRUE)
+  if (is.na(max_score)) return("Unknown")
+  close_scores <- sum(abs(row - max_score) <= 0.025, na.rm = TRUE)
+  if (close_scores > 1) return("Other")
+  return(names(row)[which.max(row)])
+}
+
+AvpSubset.35_0.75$Cell_Type_0 <- apply(scores_df, 1, classify_cell_type)
+
+OxtSubset.45_0.4@meta.data
+meta_data <-  OxtSubset.45_0.4@meta.data
+scores_df <- data.frame(
+  Neuron_Score = meta_data$Neuron_Score1,
+  Astrocyte_Score = meta_data$Astrocyte_Score1,
+  Microglial_Score = meta_data$Microglial_Score1,
+  Endothelial_Score = meta_data$Endothelial_Score1,
+  Oligodendrocyte_Score = meta_data$Oligodendrocyte_Score1,
+  Pericyte_Score = meta_data$Pericyte_Score1,
+  Ependymal_Score = meta_data$Ependymal_Score1
+)
+
+classify_cell_type <- function(row) {
+  max_score <- max(row, na.rm = TRUE)
+  if (is.na(max_score)) return("Unknown")
+  close_scores <- sum(abs(row - max_score) <= 0.025, na.rm = TRUE)
+  if (close_scores > 1) return("Other")
+  return(names(row)[which.max(row)])
+}
+
+OxtSubset.45_0.4$Cell_Type_0 <- apply(scores_df, 1, classify_cell_type)
+```
+
+Visualize cell type 0
+
+```{r visualize cell types}
+
+DimPlot(AvpSubset.35_0.75, 
+         reduction = "umap", 
+         group.by = "Cell_Type_0", 
+         label = FALSE, 
+         pt.size = 1) + 
+  guides(color = guide_legend(title = "Cell Type")) + 
+  theme(legend.position = "right"))
+# 1855 Avp neurons
+
+DimPlot(OxtSubset.45_0.4, 
+                      reduction = "umap", 
+                      group.by = "Cell_Type_0", 
+                      label = FALSE, 
+                      pt.size = 1) + 
+        guides(color = guide_legend(title = "Cell Type")) + 
+        theme(legend.position = "right"))
+# 4684 Oxt neurons
+```
+
+## Assign Cell type 1
+To get more tidy clustering, I then assigned "cell type 1" by cluster, using whichever cell type 0 assignment was most common in that cluster (essentially, by-cluster voting).
+
+```{r assign Avp cell type 1}
+
+# Step 1: summarize the cell type assignments by cluster
+
+DefaultAssay(AvpSubset.35_0.75) <- "SCT"
+cell_type_summary <-  AvpSubset.35_0.75@meta.data %>%
+  group_by(seurat_clusters, Cell_Type_0) %>%
+  summarise(cell_count = n(), .groups = 'drop') %>%
+  group_by(seurat_clusters) %>%
+  mutate(
+    total_cells = sum(cell_count),
+    percent = (cell_count / total_cells) * 100
+  ) %>%
+  ungroup()
+
+# Step 2: create a lookup vector for cluster-level assignments
+
+cluster_assignments <- cell_type_summary %>%
+  group_by(seurat_clusters) %>%
+  summarise(
+    Assigned_Cell_Type = Cell_Type_0[which.max(cell_count)], # Assign the most frequent cell type
+    .groups = 'drop'
+  ) %>%
+  # Ensure clusters are in order
+  arrange(seurat_clusters)
+
+# View the resulting cluster assignments
+print(cluster_assignments)
+
+# Step 3: ensure all clusters are included
+
+all_clusters <- unique(AvpSubset.35_0.75@meta.data$seurat_clusters)
+missing_clusters <- setdiff(all_clusters, cluster_assignments$seurat_clusters)
+
+if (length(missing_clusters) > 0) {
+  # Add missing clusters with "Other" assigned
+  missing_assignments <- tibble(
+    seurat_clusters = missing_clusters,
+    Assigned_Cell_Type = "Other"
+  )
+  cluster_assignments <- bind_rows(cluster_assignments, missing_assignments)
+}
+
+# Step 4: map Assigned_Cell_Type to metadata without using join
+
+# Create a named vector for fast mapping
+assignment_vector <- setNames(cluster_assignments$Assigned_Cell_Type, 
+                              cluster_assignments$seurat_clusters)
+
+# Step 5: assign cell types directly by indexing
+
+AvpSubset.35_0.75@meta.data$Assigned_Cell_Type <- 
+  assignment_vector[as.character(AvpSubset.35_0.75@meta.data$seurat_clusters)]
+
+# Step 6: check if any NA values were introduced (shouldn't happen)
+
+if (any(is.na(AvpSubset.35_0.75@meta.data$Assigned_Cell_Type))) {
+  stop("Some clusters were not assigned a cell type.")
+}
+
+# Step 7: view counts of cells by assigned cell type
+
+cell_type_counts <- AvpSubset.35_0.75@meta.data %>%
+  group_by(Assigned_Cell_Type) %>%
+  summarise(Cell_Count = n(), .groups = 'drop')
+
+# Print the cell type counts
+print(cell_type_counts) # 2501 Avp neurons
+```
+
+```{r assign Oxt cell type 1}
+
+# Step 1: summarize the cell type assignments by cluster
+
+DefaultAssay(OxtSubset.45_0.4) <- "SCT"
+cell_type_summary <-  OxtSubset.45_0.4@meta.data %>%
+  group_by(seurat_clusters, Cell_Type_0) %>%
+  summarise(cell_count = n(), .groups = 'drop') %>%
+  group_by(seurat_clusters) %>%
+  mutate(
+    total_cells = sum(cell_count),
+    percent = (cell_count / total_cells) * 100
+  ) %>%
+  ungroup()
+
+# Step 2: create a lookup vector for cluster-level assignments
+
+cluster_assignments <- cell_type_summary %>%
+  group_by(seurat_clusters) %>%
+  summarise(
+    Assigned_Cell_Type = Cell_Type_0[which.max(cell_count)], # Assign the most frequent cell type
+    .groups = 'drop'
+  ) %>%
+  # Ensure clusters are in order
+  arrange(seurat_clusters)
+
+# View the resulting cluster assignments
+print(cluster_assignments)
+
+# Step 3: ensure all clusters are included
+
+all_clusters <- unique(OxtSubset.45_0.4@meta.data$seurat_clusters)
+missing_clusters <- setdiff(all_clusters, cluster_assignments$seurat_clusters)
+
+if (length(missing_clusters) > 0) {
+  # Add missing clusters with "Other" assigned
+  missing_assignments <- tibble(
+    seurat_clusters = missing_clusters,
+    Assigned_Cell_Type = "Other"
+  )
+  cluster_assignments <- bind_rows(cluster_assignments, missing_assignments)
+}
+
+# Step 4: map Assigned_Cell_Type to metadata without using join
+
+# Create a named vector for fast mapping
+assignment_vector <- setNames(cluster_assignments$Assigned_Cell_Type, 
+                              cluster_assignments$seurat_clusters)
+
+# Step 5: assign cell types directly by indexing
+
+OxtSubset.45_0.4@meta.data$Assigned_Cell_Type <- 
+  assignment_vector[as.character(OxtSubset.45_0.4@meta.data$seurat_clusters)]
+
+# Step 6: check if any NA values were introduced (shouldn't happen)
+
+if (any(is.na(OxtSubset.45_0.4@meta.data$Assigned_Cell_Type))) {
+  stop("Some clusters were not assigned a cell type.")
+}
+
+# Step 7: view counts of cells by assigned cell type
+
+cell_type_counts <- OxtSubset.45_0.4@meta.data %>%
+  group_by(Assigned_Cell_Type) %>%
+  summarise(Cell_Count = n(), .groups = 'drop')
+
+# Print the cell type counts
+print(cell_type_counts) # 6310 Oxt neurons
+```
+
+Visualize cell type 1 (improved compared to cell type 0)
+
+```{r visualize cell type 1}
+
+DimPlot(AvpSubset.35_0.75, 
+  reduction = "umap", 
+  group.by = "Assigned_Cell_Type", 
+  label = FALSE, 
+  pt.size = 1) + 
+  guides(color = guide_legend(title = "Cell Type")) + 
+  theme(legend.position = "right")
+
+DimPlot(OxtSubset.45_0.4, 
+  reduction = "umap", 
+  group.by = "Assigned_Cell_Type", 
+  label = FALSE, 
+  pt.size = 1) + 
+  guides(color = guide_legend(title = "Cell Type")) + 
+  theme(legend.position = "right")
+```
+
+```{r save progress}
+
+saveRDS(AvpSubset.35_0.75, file = "C:/shares/btrainor/Sinead/GitHub/AvpSubset.35_0.75.rds")
+saveRDS(OxtSubset.45_0.4, file = "C:/shares/btrainor/Sinead/GitHub/OxtSubset.45_0.4.rds")
+```
+
+
+
+
+
+
+
+
+
