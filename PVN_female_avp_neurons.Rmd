@@ -1,0 +1,283 @@
+---
+title: "PVN Female Avp Neurons"
+author: "Sinead Archdeacon"
+date: "2026-04-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+This section subsets female Avp+ neurons based on the previous annotations and runs DE analysis to compare gene expression for stress and control samples.
+
+```{r Environment setup}
+
+# Increase capacity of R: necessary at the start of every session
+options(future.globals.maxSize = 60000 * 1024^2)
+
+# Load libraries
+library(Seurat)
+library(SeuratObject)
+library(future.apply)
+library(harmony)
+library(glmGamPoi)
+library(sctransform)
+library(biomaRt)
+library(viridis)
+library(tidyverse)
+library(kableExtra)
+library(edgeR)
+library(HGNChelper)
+library(ggplot2)
+library(DESeq2)
+library(Matrix)
+library(data.table)
+library(S4Vectors)
+```
+
+## Read in Avp+ subset
+
+```{r read in data}
+
+AvpSubset.35_0.75 <- readRDS(file = "C:/shares/btrainor/Sinead/GitHub/AvpSubset.35_0.75.rds")
+```
+
+## Subset Avp neurons
+
+```{r subset Avp neurons}
+
+# Subset for just neurons based on cell type 1
+AvpNeurons <- subset(AvpSubset.35_0.75, Assigned_Cell_Type == "Neuron_Score")
+
+# Re-process the subset
+DefaultAssay(AvpNeurons) <- "SCT"
+VariableFeatures(AvpNeurons) <- SelectIntegrationFeatures(object.list = list(AvpNeurons), nfeatures = 2000)
+ElbowPlot(AvpNeurons, 50)
+AvpNeurons <- RunPCA(AvpNeurons, features = VariableFeatures(AvpNeurons), verbose = FALSE)
+AvpNeurons <- RunHarmony(AvpNeurons, assay.use = "SCT", group.by.vars = "dataset")
+AvpNeurons.40 <- FindNeighbors(AvpNeurons, reduction = "harmony", dims = 1:40)
+AvpNeurons.40_0.3 <- FindClusters(AvpNeurons.40, resolution = 0.3)
+AvpNeurons.40_0.3 <- RunUMAP(AvpNeurons.40_0.3, reduction = "harmony", dims = 1:40)
+
+# 2011 females, 490 males
+```
+
+Update metadata columns to show technical and biological replicates.
+
+```{r update metadata columns}
+
+colnames(AvpNeurons.40_0.3@meta.data)[colnames(AvpNeurons.40_0.3@meta.data) == "assignment"] <- "bio_replicate"
+AvpNeurons.40_0.3$tech_replicate <- gsub(".*(\\d)$", "\\1", AvpNeurons.40_0.3$dataset)
+
+AvpNeurons.40_0.3@meta.data$bio_replicate <- as.character(AvpNeurons.40_0.3@meta.data$bio_replicate)
+AvpNeurons.40_0.3@meta.data$bio_replicate[AvpNeurons.40_0.3@meta.data$tech_replicate == "2" & AvpNeurons.40_0.3@meta.data$bio_replicate == "0" & AvpNeurons.40_0.3@meta.data$sex == "female"] <- "4"
+AvpNeurons.40_0.3@meta.data$bio_replicate[AvpNeurons.40_0.3@meta.data$tech_replicate == "2" & AvpNeurons.40_0.3@meta.data$bio_replicate == "1" & AvpNeurons.40_0.3@meta.data$sex == "female"] <- "5"
+AvpNeurons.40_0.3@meta.data$bio_replicate[AvpNeurons.40_0.3@meta.data$tech_replicate == "2" & AvpNeurons.40_0.3@meta.data$bio_replicate == "2" & AvpNeurons.40_0.3@meta.data$sex == "female"] <- "6"
+AvpNeurons.40_0.3@meta.data$bio_replicate[AvpNeurons.40_0.3@meta.data$tech_replicate == "2" & AvpNeurons.40_0.3@meta.data$bio_replicate == "3" & AvpNeurons.40_0.3@meta.data$sex == "female"] <- "7"
+
+# Remove rows where bio_replicate is NA
+AvpNeurons.40_0.3 <- AvpNeurons.40_0.3[, !is.na(AvpNeurons.40_0.3@meta.data$bio_replicate)]
+
+# Check results
+table(is.na(AvpNeurons.40_0.3@meta.data$bio_replicate))
+table(AvpNeurons.40_0.3@meta.data$bio_replicate)
+table(AvpNeurons.40_0.3@meta.data$sex)
+
+# Save progress
+saveRDS(AvpNeurons.40_0.3, file = "C:/shares/btrainor/Sinead/GitHub/AvpNeurons.40_0.3.rds")
+```
+
+## Subset female Avp neurons
+
+```{r subset female Avp neurons}
+
+female.avp.neurons <- subset (AvpNeurons.40_0.3, sex == "female")
+
+# Re-process the subset
+DefaultAssay(female.avp.neurons) <- "SCT"
+VariableFeatures(female.avp.neurons) <- SelectIntegrationFeatures(object.list = list(female.avp.neurons), 
+                                                                  nfeatures = 2000)
+female.avp.neurons <- RunPCA(female.avp.neurons, features = VariableFeatures(female.avp.neurons), verbose = FALSE)
+female.avp.neurons <- RunHarmony(female.avp.neurons, assay.use = "SCT", group.by.vars = "dataset")
+ElbowPlot(female.avp.neurons, 50)
+female.avp.neurons.30 <- FindNeighbors(female.avp.neurons, reduction = "harmony", dims = 1:30)
+female.avp.neurons.30_0.3 <- FindClusters(female.avp.neurons.30, resolution = 0.3)
+female.avp.neurons.30_0.3 <- RunUMAP(female.avp.neurons.30_0.3, reduction = "harmony", dims = 1:30)
+
+# check metadata
+table(female.avp.neurons.30_0.3@meta.data$bio_replicate)
+table(female.avp.neurons.30_0.3@meta.data$tech_replicate)
+
+# join counts layer
+DefaultAssay(female.avp.neurons.30_0.3) <- "RNA"
+female.avp.neurons.30_0.3 <- JoinLayers(object = female.avp.neurons.30_0.3, assay = "RNA", layers = "counts")
+
+# save progress
+saveRDS(female.avp.neurons.30_0.3, file = "C:/shares/btrainor/Sinead/GitHub/female.avp.neurons.30_0.3.rds")
+```
+
+## DE for female Avp neurons
+
+First, structure the counts matrix using Pseudobulk.
+
+```{r Pseudobulk for female Avp neurons}
+
+# Update the sample_identifiers column to reflect updated tech_replicates
+female.avp.neurons.30_0.3@meta.data$sample_identifiers <- paste(female.avp.neurons.30_0.3@meta.data$condition, female.avp.neurons.30_0.3@meta.data$tech_replicate, sep = "_")
+unique(female.avp.neurons.30_0.3@meta.data$sample_identifiers) # check
+
+# create counts matrix
+cts <- GetAssayData(female.avp.neurons.30_0.3, assay = "RNA", layer = "counts")
+stopifnot(is(cts, "Matrix"))
+
+# ensure sparse matrix format
+cts <- as(cts, "dgCMatrix")
+stopifnot(is(cts, "dgCMatrix"))
+
+# convert to dataframe
+cts_df <- as.data.frame(as.matrix(cts))
+stopifnot(is.data.frame(cts_df)) 
+
+# transpose and convert to dataframe
+GEM <- as.data.frame(t(cts_df))
+stopifnot(is.data.frame(GEM))
+
+# ensure sample identifiers exist in metadata
+stopifnot("sample_identifiers" %in% colnames(female.avp.neurons.30_0.3@meta.data))
+GEM$sample_identifiers <- female.avp.neurons.30_0.3@meta.data$sample_identifiers
+
+# aggregate counts
+aggr <- aggregate(GEM[, -ncol(GEM)], by = list(GEM$sample_identifiers), FUN = sum)
+stopifnot(is.data.frame(aggr))
+
+# ensure proper rownames
+rownames(aggr) <- aggr$Group.1
+aggr$Group.1 <- NULL
+
+# clean up environment
+rm(cts, cts_df, GEM)
+
+# ensure all columns are numeric
+aggr <- as.data.frame(lapply(aggr, as.numeric), row.names = rownames(aggr))
+stopifnot(all(sapply(aggr, is.numeric)))  
+
+# convert "aggr" to "cts_matrix"
+cts_matrix <- as.matrix(aggr)
+
+# ensure correct format
+stopifnot(is.matrix(cts_matrix)) 
+stopifnot(mode(cts_matrix) == "numeric")
+cat("\nChecking structure of cts_matrix...\n")
+dim(cts_matrix)
+rownames(cts_matrix)[1:10]  # should be gene names
+colnames(cts_matrix)[1:10]  # should be sample names
+cts_matrix <- (t(cts_matrix))
+rownames(cts_matrix)[1:10]  # should be gene names
+colnames(cts_matrix)[1:10]  # should be sample names
+mode(cts_matrix)  # should return "numeric"
+class(cts_matrix)  # should return "matrix"
+
+# filter lowly expressed genes
+cts_matrix <- cts_matrix[rowSums(cts_matrix) > 5, ]
+stopifnot(nrow(cts_matrix) > 0)  # ensure some genes remain
+```
+
+Next, create a column data object that is compatible with the counts matrix.
+
+```{r create coldata}
+
+coldata <- data.frame(
+  row.names = colnames(cts_matrix),
+  condition = gsub("_\\d+", "", colnames(cts_matrix)),
+  tech_replicate = gsub("^.*_(\\d+)$", "\\1", colnames(cts_matrix)))
+
+# convert to factors
+coldata$condition <- factor(coldata$condition)
+coldata$tech_replicate <- factor(coldata$tech_replicate)
+
+# ensure proper structure
+stopifnot(is.data.frame(coldata))  # should be a dataframe
+stopifnot(all(rownames(coldata) == colnames(cts_matrix)))  # row names must match column names of cts_matrix
+```
+
+Finalize the counts matrix and coldata formats.
+
+```{r finalize counts matrix and coldata}
+
+# convert counts matrix to sparse matrix
+cts_matrix <- as(cts_matrix, "dgCMatrix")  
+stopifnot(is(cts_matrix, "dgCMatrix")) 
+
+stopifnot(ncol(cts_matrix) > 0)  # ensure some samples remain
+str(coldata)  # should contain 'condition' and 'bio_replicate'
+all(rownames(coldata) == colnames(cts_matrix))  # should return TRUE
+levels(coldata$condition)  # should return "control" and "stress"
+```
+
+Then create a DESeq2 dataset (dds) using the counts matrix and coldata
+
+```{r create dds}
+
+dds <- tryCatch({
+  DESeq2::DESeqDataSetFromMatrix(countData = cts_matrix, colData = coldata, design = tech_replicate ~ condition)
+}, error = function(e) {
+  cat("Error in DESeqDataSetFromMatrix:\n", conditionMessage(e), "\n")
+  stop(e)
+})
+
+stopifnot(is(dds, "DESeqDataSet"))
+stopifnot("condition" %in% colnames(coldata))  
+coldata <- DataFrame(coldata) # ensure coldata is a proper DataFrame
+```
+
+Run DE, filter and save results
+*Note:* there were no DEs here for padj <0.05
+
+```{r run DE}
+
+dds <- DESeq(dds)
+summary(dds)
+
+# inspect results
+res <- results(dds)
+stopifnot(is(res, "DESeqResults"))
+res_df <- as.data.frame(res)
+res_df$gene <- rownames(res_df)
+res_df$DE <- ifelse(res_df$log2FoldChange < 0, "down", "up")
+summary(res$log2FoldChange)
+summary(res$padj)
+
+# save results with all p-values (remove LOC genes)
+res_df_noLOC <- res_df %>%
+  filter(!grepl("LOC", gene))
+all_genes_fem_avp <- res_df_noLOC
+write.csv(all_genes_fem_avp, "C:/shares/btrainor/Sinead/GitHub/all_genes_fem_avp.csv") 
+
+# save significant results (remove LOC genes)
+results_filtered_pvalue <- res_df %>% 
+  filter(pvalue < 0.05, !grepl("LOC", gene))
+write.csv(results_filtered_pvalue, "C:/shares/btrainor/Sinead/GitHub/female.avp.neurons.30_0.3_results_pval.csv")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
