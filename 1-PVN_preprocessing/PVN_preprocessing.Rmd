@@ -39,24 +39,24 @@ First, add the .h5 files to the RStudio environment.
 
 ```{r Upload files}
 
-PVNData_malec1 <- Seurat::Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/PVN_MALE_C1/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
-PVNData_males1 <- Seurat::Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/PVN_MALE_S1/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
-PVNData_fems1 <- Seurat::Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/AG_BT_PVN_S1/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
-PVNData_femc1 <- Seurat::Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/AG_BT_PVN_C1/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
-PVNData_fems2 <- Seurat::Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/PVN_FEM_S2/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
-PVNData_femc2 <- Seurat::Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/PVN_FEM_C2/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
+PVNData_malec1 <- Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/PVN_MALE_C1/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
+PVNData_males1 <- Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/PVN_MALE_S1/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
+PVNData_fems1 <- Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/AG_BT_PVN_S1/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
+PVNData_femc1 <- Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/AG_BT_PVN_C1/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
+PVNData_fems2 <- Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/PVN_FEM_S2/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
+PVNData_femc2 <- Read10X_h5(filename = 'C:/shares/btrainor/Sequencingdata/Resequenced_PVN/PVN_FEM_C2/filtered_feature_bc_matrix.h5', use.names = TRUE, unique.features = TRUE)
 ```
 
 Convert to Seurat objects and add relevant metadata columns. The Souporcell information is used to demultiplex the pooled samples.
 
 ```{r Create Seurat objects}
 
-PVNSeuratObject_malec1 <- Seurat::CreateSeuratObject(counts = PVNData_malec1)
-PVNSeuratObject_males1 <- Seurat::CreateSeuratObject(counts = PVNData_males1)
-PVNSeuratObject_femc1 <- Seurat::CreateSeuratObject(counts = PVNData_femc1)
-PVNSeuratObject_fems1 <- Seurat::CreateSeuratObject(counts = PVNData_fems1)
-PVNSeuratObject_femc2 <- Seurat::CreateSeuratObject(counts = PVNData_femc2)
-PVNSeuratObject_fems2 <- Seurat::CreateSeuratObject(counts = PVNData_fems2)
+PVNSeuratObject_malec1 <- CreateSeuratObject(counts = PVNData_malec1)
+PVNSeuratObject_males1 <- CreateSeuratObject(counts = PVNData_males1)
+PVNSeuratObject_femc1 <- CreateSeuratObject(counts = PVNData_femc1)
+PVNSeuratObject_fems1 <- CreateSeuratObject(counts = PVNData_fems1)
+PVNSeuratObject_femc2 <- CreateSeuratObject(counts = PVNData_femc2)
+PVNSeuratObject_fems2 <- CreateSeuratObject(counts = PVNData_fems2)
 
 # add sex metadata
 PVNSeuratObject_malec1$sex <- 'male'
@@ -120,12 +120,12 @@ PVNSeuratObject_fems2 <- subset(PVNSeuratObject_fems2, subset = status == "singl
 # Check how many doublets were removed
 
 # Add cell IDS and orig idents metadata
-PVNSeuratObject_malec1 <- Seurat::RenameCells(PVNSeuratObject_malec1, add.cell.id = "malec1_")
-PVNSeuratObject_males1 <- Seurat::RenameCells(PVNSeuratObject_males1, add.cell.id = "males1_")
-PVNSeuratObject_femc1 <- Seurat::RenameCells(PVNSeuratObject_femc1, add.cell.id = "femc1_")
-PVNSeuratObject_femc2 <- Seurat::RenameCells(PVNSeuratObject_femc2, add.cell.id = "femc2_")
-PVNSeuratObject_fems1 <- Seurat::RenameCells(PVNSeuratObject_fems1, add.cell.id = "fems1_")
-PVNSeuratObject_fems2 <- Seurat::RenameCells(PVNSeuratObject_fems2, add.cell.id = "fems2_")
+PVNSeuratObject_malec1 <- RenameCells(PVNSeuratObject_malec1, add.cell.id = "malec1_")
+PVNSeuratObject_males1 <- RenameCells(PVNSeuratObject_males1, add.cell.id = "males1_")
+PVNSeuratObject_femc1 <- RenameCells(PVNSeuratObject_femc1, add.cell.id = "femc1_")
+PVNSeuratObject_femc2 <- RenameCells(PVNSeuratObject_femc2, add.cell.id = "femc2_")
+PVNSeuratObject_fems1 <- RenameCells(PVNSeuratObject_fems1, add.cell.id = "fems1_")
+PVNSeuratObject_fems2 <- RenameCells(PVNSeuratObject_fems2, add.cell.id = "fems2_")
 
 PVNSeuratObject_malec1$orig.ident <- "malec1"
 PVNSeuratObject_males1$orig.ident <- "males1"
@@ -193,35 +193,35 @@ PVNSeuratObject_fems2 <- subset(PVNSeuratObject_fems2, subset = nFeature_RNA > 1
 
 ```{r Normalize RNA assays}
 
-PVNSeuratObject_malec1 <- Seurat::NormalizeData(PVNSeuratObject_malec1, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
-PVNSeuratObject_malec1 <- Seurat::FindVariableFeatures(PVNSeuratObject_malec1, selection.method = "vst", nfeatures = 2000, assay = "RNA")
+PVNSeuratObject_malec1 <- NormalizeData(PVNSeuratObject_malec1, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
+PVNSeuratObject_malec1 <- FindVariableFeatures(PVNSeuratObject_malec1, selection.method = "vst", nfeatures = 2000, assay = "RNA")
 all.genes <- rownames(PVNSeuratObject_malec1)
-PVNSeuratObject_malec1 <- Seurat::ScaleData(PVNSeuratObject_malec1, features = all.genes, assay = "RNA")
+PVNSeuratObject_malec1 <- ScaleData(PVNSeuratObject_malec1, features = all.genes, assay = "RNA")
 
-PVNSeuratObject_males1 <- Seurat::NormalizeData(PVNSeuratObject_males1, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
-PVNSeuratObject_males1 <- Seurat::FindVariableFeatures(PVNSeuratObject_males1, selection.method = "vst", nfeatures = 2000, assay = "RNA")
+PVNSeuratObject_males1 <- NormalizeData(PVNSeuratObject_males1, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
+PVNSeuratObject_males1 <- FindVariableFeatures(PVNSeuratObject_males1, selection.method = "vst", nfeatures = 2000, assay = "RNA")
 all.genes <- rownames(PVNSeuratObject_males1)
-PVNSeuratObject_males1 <- Seurat::ScaleData(PVNSeuratObject_males1, features = all.genes, assay = "RNA")
+PVNSeuratObject_males1 <- ScaleData(PVNSeuratObject_males1, features = all.genes, assay = "RNA")
 
-PVNSeuratObject_femc1 <- Seurat::NormalizeData(PVNSeuratObject_femc1, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
-PVNSeuratObject_femc1 <- Seurat::FindVariableFeatures(PVNSeuratObject_femc1, selection.method = "vst", nfeatures = 2000, assay = "RNA")
+PVNSeuratObject_femc1 <- NormalizeData(PVNSeuratObject_femc1, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
+PVNSeuratObject_femc1 <- FindVariableFeatures(PVNSeuratObject_femc1, selection.method = "vst", nfeatures = 2000, assay = "RNA")
 all.genes <- rownames(PVNSeuratObject_femc1)
-PVNSeuratObject_femc1 <- Seurat::ScaleData(PVNSeuratObject_femc1, features = all.genes, assay = "RNA")
+PVNSeuratObject_femc1 <- ScaleData(PVNSeuratObject_femc1, features = all.genes, assay = "RNA")
 
-PVNSeuratObject_femc2 <- Seurat::NormalizeData(PVNSeuratObject_femc2, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
-PVNSeuratObject_femc2 <- Seurat::FindVariableFeatures(PVNSeuratObject_femc2, selection.method = "vst", nfeatures = 2000, assay = "RNA")
+PVNSeuratObject_femc2 <- NormalizeData(PVNSeuratObject_femc2, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
+PVNSeuratObject_femc2 <- FindVariableFeatures(PVNSeuratObject_femc2, selection.method = "vst", nfeatures = 2000, assay = "RNA")
 all.genes <- rownames(PVNSeuratObject_femc2)
-PVNSeuratObject_femc2 <- Seurat::ScaleData(PVNSeuratObject_femc2, features = all.genes, assay = "RNA")
+PVNSeuratObject_femc2 <- ScaleData(PVNSeuratObject_femc2, features = all.genes, assay = "RNA")
 
-PVNSeuratObject_fems1 <- Seurat::NormalizeData(PVNSeuratObject_fems1, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
-PVNSeuratObject_fems1 <- Seurat::FindVariableFeatures(PVNSeuratObject_fems1, selection.method = "vst", nfeatures = 2000, assay = "RNA")
+PVNSeuratObject_fems1 <- NormalizeData(PVNSeuratObject_fems1, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
+PVNSeuratObject_fems1 <- FindVariableFeatures(PVNSeuratObject_fems1, selection.method = "vst", nfeatures = 2000, assay = "RNA")
 all.genes <- rownames(PVNSeuratObject_fems1)
-PVNSeuratObject_fems1 <- Seurat::ScaleData(PVNSeuratObject_fems1, features = all.genes, assay = "RNA")
+PVNSeuratObject_fems1 <- ScaleData(PVNSeuratObject_fems1, features = all.genes, assay = "RNA")
 
-PVNSeuratObject_fems2 <- Seurat::NormalizeData(PVNSeuratObject_fems2, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
-PVNSeuratObject_fems2 <- Seurat::FindVariableFeatures(PVNSeuratObject_fems2, selection.method = "vst", nfeatures = 2000, assay = "RNA")
+PVNSeuratObject_fems2 <- NormalizeData(PVNSeuratObject_fems2, normalization.method = "LogNormalize", scale.factor = 10000, assay = "RNA")
+PVNSeuratObject_fems2 <- FindVariableFeatures(PVNSeuratObject_fems2, selection.method = "vst", nfeatures = 2000, assay = "RNA")
 all.genes <- rownames(PVNSeuratObject_fems2)
-PVNSeuratObject_fems2 <- Seurat::ScaleData(PVNSeuratObject_fems2, features = all.genes, assay = "RNA")
+PVNSeuratObject_fems2 <- ScaleData(PVNSeuratObject_fems2, features = all.genes, assay = "RNA")
 ```
 
 ## Combine all Seurat objects and run SCTransform
@@ -359,7 +359,7 @@ saveRDS(AvpSubset.35_0.75, file = "C:/shares/btrainor/Sinead/GitHub/AvpSubset.35
 ```
 
 ## Subset Oxt+ cells
-Determine oxytocin expression threshold. (Explain why this is different than Avp threshold.)
+Determine oxytocin expression threshold.
 
 ```{r oxytocin threshold}
 
