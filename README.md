@@ -57,7 +57,7 @@ This analysis was exploratory and had limited sample sizes. Full reproducibility
 —There were twice as many female as male samples, so male analyses may be relatively underpowered.
 
 ## Future directions / Things to change
-—Using NormalizeData, FindVariableFeatures, and ScaleData before SCTransform is redundant. \
+—Using FindVariableFeatures and ScaleData before SCTransform is unnecessary. \
 —SCTransform should be run on individual samples rather than merged objects. \
 —Use either the full Seurat SCT integration workflow or Harmony, not both. \
 —Annotate all cell types and identify neurons before subsetting by Avp and Oxt expression. This allows for more robust annotation (since more data is included) and more accurate Avp and Oxt expression thresholds (since only neuronal Avp and Oxt expression is considered). \
