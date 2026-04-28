@@ -8,7 +8,7 @@ Seurat object creation  \
 Quality control/filtering  \
 Normalization (SCTransform) \
 Integration \
-PCA and clustering \
+PCA and clustering
 
 Subset vasopressin cells \
 Subset oxytocin cells
