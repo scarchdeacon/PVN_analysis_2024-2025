@@ -372,7 +372,7 @@ ggplot(oxt_expression, aes_string(x = "Oxt")) +
        y = "Number of Cells")
 
 # Subset Oxt+ cells
-oxt_cells <- Seurat::WhichCells(PVN.sct.35_0.2, expression = Oxt > 0.5 & Oxt > Avp)
+oxt_cells <- WhichCells(PVN.sct.35_0.2, expression = Oxt > 0.5 & Oxt > Avp)
 OxtSubset <- subset(PVN.sct, cells = oxt_cells) # 9371 cells
 ```
 
