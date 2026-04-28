@@ -100,7 +100,7 @@ rownames(clusters) <- clusters$barcode
 clusters$barcode <- NULL  # Remove barcode column after setting rownames
   
 # Add metadata to Seurat object
-seurat_object <- Seurat::AddMetaData(seurat_object, metadata = clusters)
+seurat_object <- AddMetaData(seurat_object, metadata = clusters)
   
 return(seurat_object)
 
