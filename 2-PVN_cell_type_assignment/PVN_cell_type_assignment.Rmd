@@ -162,7 +162,7 @@ DimPlot(AvpSubset.35_0.75,
          label = FALSE, 
          pt.size = 1) + 
   guides(color = guide_legend(title = "Cell Type")) + 
-  theme(legend.position = "right"))
+  theme(legend.position = "right")
 # 1855 Avp neurons
 
 DimPlot(OxtSubset.45_0.4, 
@@ -171,7 +171,7 @@ DimPlot(OxtSubset.45_0.4,
                       label = FALSE, 
                       pt.size = 1) + 
         guides(color = guide_legend(title = "Cell Type")) + 
-        theme(legend.position = "right"))
+        theme(legend.position = "right")
 # 4684 Oxt neurons
 ```
 
