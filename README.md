@@ -60,6 +60,22 @@ Run DESeq2
 Standardize volcano plot axes \
 Generate volcano plots
 
+*DEs from female vasopressin neurons* \
+![DEs from female vasopressin neurons](7-PVN_volcano_plots/standardized_volcanoplot_fem_avp.png) \
+[Download high-resolution PDF](7-PVN_volcano_plots/standardized_volcanoplot_fem_avp.pdf)
+
+*DEs from male vasopressin neurons* \
+![DEs from male vasopressin neurons](7-PVN_volcano_plots/standardized_volcanoplot_male_avp.png) \
+[Download high-resolution PDF](7-PVN_volcano_plots/standardized_volcanoplot_male_avp.pdf)
+
+*DEs from female oxytocin neurons* \
+![DEs from female oxytocin neurons](7-PVN_volcano_plots/standardized_volcanoplot_fem_oxt.png) \
+[Download high-resolution PDF](7-PVN_volcano_plots/standardized_volcanoplot_fem_oxt.pdf)
+
+*DEs from male oxytocin neurons* \
+![DEs from male oxytocin neurons](7-PVN_volcano_plots/standardized_volcanoplot_male_oxt.png) \
+[Download high-resolution PDF](7-PVN_volcano_plots/standardized_volcanoplot_male_oxt.pdf)
+
 ## Limitations
 This analysis was exploratory and had limited sample sizes. Full reproducibility has not been verified in the current R environment, and results should be interpreted with caution. This workflow should serve as a reference for analytical approaches rather than definitive conclusions. \
 —There were twice as many female as male samples, so male analyses may be relatively underpowered.
