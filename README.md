@@ -18,13 +18,13 @@ Module-based scoring (Cell type 0) \
 By-cluster annotation (Cell type 1) \
 Visualization
 
-*Vasopressin cells by assigned cell type*
-![Vassopressin cells by assigned cell type](2-PVN_cell_type_assignment/umap_avpcells_assignedcelltype.png)
-[Download high-resolution PDF](2-PVN_cell_type_assignment/umap_avpcells_assignedcelltype.pdf)
+*Vasopressin cells by assigned cell type* \
+![Vassopressin cells by assigned cell type](2-PVN_cell_type_assignment/umap_avpcells_assignedcelltype.png) \
+[Download high-resolution PDF](2-PVN_cell_type_assignment/umap_avpcells_assignedcelltype.pdf) 
 
-*Oxytocin cells by assigned cell type*
-![Oxytocin cells by assigned cell type](2-PVN_cell_type_assignment/umap_oxtcells_assignedcelltype.png)
-[Download high-resolution PDF](2-PVN_cell_type_assignment/umap_oxtcells_assignedcelltype.pdf)
+*Oxytocin cells by assigned cell type* \
+![Oxytocin cells by assigned cell type](2-PVN_cell_type_assignment/umap_oxtcells_assignedcelltype.png) \
+[Download high-resolution PDF](2-PVN_cell_type_assignment/umap_oxtcells_assignedcelltype.pdf) 
 
 **3. Analysis of female vasopressin neurons** \
 Subset vasopressin cells for neurons \
