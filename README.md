@@ -16,10 +16,9 @@ Subset oxytocin cells
 **2. Cell type assignment** \
 Module-based scoring (Cell type 0) \
 By-cluster annotation (Cell type 1) \
-Visualization
 
 *Vasopressin cells by assigned cell type* \
-![Vassopressin cells by assigned cell type](2-PVN_cell_type_assignment/umap_avpcells_assignedcelltype.png) \
+![Vasopressin cells by assigned cell type](2-PVN_cell_type_assignment/umap_avpcells_assignedcelltype.png) \
 [Download high-resolution PDF](2-PVN_cell_type_assignment/umap_avpcells_assignedcelltype.pdf) 
 
 *Oxytocin cells by assigned cell type* \
