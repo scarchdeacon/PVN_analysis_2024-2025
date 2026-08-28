@@ -1,6 +1,6 @@
 ## Description
 This analysis was completed from August 2024-April 2025 using single nucleus RNA-seq data collected in 2023 and 2024 by the Trainor lab in the UC Davis Department of Psychology. Analysis guidance was provided by the Nord lab at the UC Davis Center for Neuroscience. 
-PVN samples were collected from 24 California mice (Peromyscus californicus) (N = 8 males, 16 females). Sequencing was performed by the UC Davis Bioinformatics Core using the 10x Genomics Chromium Nuclei Isolation kit, yielding ~87,000 sequenced nuclei. Raw data was processed with the 10X Genomics CellRanger pipeline before analysis in RStudio using Seurat v5.
+PVN samples were collected from 24 California mice (Peromyscus californicus) (N = 8 males, 16 females). Sequencing was performed by the UC Davis Bioinformatics Core using the 10x Genomics Chromium Nuclei Isolation kit, initially yielding ~87,000 sequenced nuclei. Raw data was processed with the 10X Genomics CellRanger pipeline before analysis in RStudio using Seurat v5.
 
 ## Summary of coding steps
 **1. Preprocessing** \
@@ -15,7 +15,7 @@ Subset oxytocin cells
 
 **2. Cell type assignment** \
 Module-based scoring (Cell type 0) \
-By-cluster annotation (Cell type 1) \
+By-cluster annotation (Cell type 1) 
 
 *Vasopressin cells by assigned cell type* \
 ![Vasopressin cells by assigned cell type](2-PVN_cell_type_assignment/umap_avpcells_assignedcelltype.png) \
